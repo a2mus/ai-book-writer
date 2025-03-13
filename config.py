@@ -2,14 +2,14 @@
 import os
 from typing import Dict, List
 
-def get_config(local_url: str = "http://localhost:1234/v1") -> Dict:
+def get_config(local_url: str = "http://localhost:11434/v1") -> Dict:
     """Get the configuration for the agents"""
     
-    # Basic config for local LLM
+    # Ollama config with command-r7b-arabic model
     config_list = [{
-        'model': 'Mistral-Nemo-Instruct-2407',
+        'model': 'command-r7b-arabic:7b-02-2025-q8_0',
         'base_url': local_url,
-        'api_key': "not-needed"
+        'api_key': "ollama"  # Ollama typically doesn't need a real key
     }]
 
     # Common configuration for all agents
