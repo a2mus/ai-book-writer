@@ -202,6 +202,13 @@ class BookAgents:
             llm_config=self.agent_config,
         )
 
+        # Terminology checker - ensures consistent terminology
+        terminology_checker = autogen.AssistantAgent(
+            name="TerminologyChecker",
+            system_message="You ensure consistent terminology usage throughout the article. You check content against a provided terminology database (CSV) and suggest replacements for non-standard terms. You maintain terminological consistency across all sections.",
+            llm_config=self.agent_config,
+        )
+
         # User Proxy: Manages the interaction
         user_proxy = autogen.UserProxyAgent(
             name="user_proxy",
@@ -219,7 +226,8 @@ class BookAgents:
             "writer": writer,
             "editor": editor,
             "user_proxy": user_proxy,
-            "outline_creator": outline_creator
+            "outline_creator": outline_creator,
+            "terminology_checker": terminology_checker
         }
 
     def update_world_element(self, element_name: str, description: str) -> None:

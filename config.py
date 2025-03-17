@@ -1,4 +1,4 @@
-"""Configuration for the book generation system"""
+"""Configuration for the article generation system"""
 import os
 from typing import Dict, List
 
@@ -18,7 +18,13 @@ def get_config(local_url: str = "http://localhost:11434/v1") -> Dict:
         "temperature": 0.7,
         "config_list": config_list,
         "timeout": 600,
-        "cache_seed": None
+        "cache_seed": None,
+        "article_structure": {
+            "max_sections": 5,
+            "section_word_limit": 500,
+            "intro_word_limit": 250,
+            "conclusion_word_limit": 250
+        }
     }
     
     return agent_config

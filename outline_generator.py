@@ -1,4 +1,5 @@
-"""Generate book outlines using AutoGen agents with improved error handling"""
+"""Generate article outlines"""
+import os
 import autogen
 from typing import Dict, List
 import re
@@ -8,60 +9,58 @@ class OutlineGenerator:
         self.agents = agents
         self.agent_config = agent_config
 
-    def generate_outline(self, initial_prompt: str, num_chapters: int = 25) -> List[Dict]:
-        """Generate a book outline based on initial prompt"""
+    def generate_outline(self, topic: str, target_audience: str, tone: str, word_count: int) -> str:
+        """Generate an article outline based on topic and parameters"""
         print("\nGenerating outline...")
 
+        outline_creator = self.agents["outline_creator"]
+        editor = self.agents["editor"]
+        user_proxy = self.agents["user_proxy"]
         
-        groupchat = autogen.GroupChat(
-            agents=[
-                self.agents["user_proxy"],
-                self.agents["story_planner"],
-                self.agents["world_builder"],
-                self.agents["outline_creator"]
-            ],
+        # Create group chat for outline creation
+        outline_group_chat = autogen.GroupChat(
+            agents=[user_proxy, outline_creator, editor],
             messages=[],
-            max_round=4,
-            speaker_selection_method="round_robin"
+            max_round=5
         )
         
-        manager = autogen.GroupChatManager(groupchat=groupchat, llm_config=self.agent_config)
-
-        outline_prompt = f"""Let's create a {num_chapters}-chapter outline for a book with the following premise:
-
-{initial_prompt}
-
-Process:
-1. Story Planner: Create a high-level story arc and major plot points
-2. World Builder: Suggest key settings and world elements needed
-3. Outline Creator: Generate a detailed outline with chapter titles and prompts
-
-Start with Chapter 1 and number chapters sequentially.
-
-Make sure there are at least 3 scenes in each chapter.
-
-[Continue with remaining chapters]
-
-Please output all chapters, do not leave out any chapters. Think through every chapter carefully, none should be to be determined later
-It is of utmost importance that you detail out every chapter, do not combine chapters, or leave any out
-There should be clear content for each chapter. There should be a total of {num_chapters} chapters.
-
-End the outline with 'END OF OUTLINE'"""
-
+        manager = autogen.GroupChatManager(groupchat=outline_group_chat, llm_config=self.agent_config)
+        
+        # Generate outline prompt
+        prompt = f"""
+        Create a detailed outline for an article on "{topic}".
+        
+        Target audience: {target_audience}
+        Tone: {tone}
+        Target word count: {word_count} words
+        
+        The outline should include:
+        1. Introduction (key points to address)
+        2. 3-5 main sections with descriptive titles
+        3. Key points to cover in each section
+        4. Conclusion (key takeaways)
+        
+        Format the outline clearly with section titles and bullet points for key content in each section.
+        """
+        
         try:
-            # Initiate the chat
-            self.agents["user_proxy"].initiate_chat(
-                manager,
-                message=outline_prompt
-            )
-
-            # Extract the outline from the chat messages
-            return self._process_outline_results(groupchat.messages, num_chapters)
+            # Generate outline
+            user_proxy.initiate_chat(manager, message=prompt)
+            
+            # Extract the final outline from the conversation
+            chat_history = outline_group_chat.messages
+            final_outline = chat_history[-1]["content"]
+            
+            # Save outline to file
+            os.makedirs("article_output", exist_ok=True)
+            with open("article_output/outline.txt", "w", encoding="utf-8") as f:
+                f.write(final_outline)
+                
+            return final_outline
             
         except Exception as e:
             print(f"Error generating outline: {str(e)}")
-            # Try to salvage any outline content we can find
-            return self._emergency_outline_processing(groupchat.messages, num_chapters)
+            return ""
 
     def _get_sender(self, msg: Dict) -> str:
         """Helper to get sender from message regardless of format"""

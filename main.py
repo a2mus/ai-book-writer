@@ -3,6 +3,7 @@ from config import get_config
 from agents import BookAgents
 from book_generator import BookGenerator
 from outline_generator import OutlineGenerator
+from terminology_handler import TerminologyManager
 
 def main():
     # Get configuration
@@ -81,6 +82,27 @@ def main():
         book_gen.generate_book(outline)
     else:
         print("Error: No outline was generated.")
+    
+    # Terminology file
+    terminology_path = input("Enter terminology CSV path (default: terminology.csv): ")
+    if not terminology_path:
+        terminology_path = "terminology.csv"
+    
+    # Initialize terminology manager
+    term_manager = TerminologyManager(terminology_path)
+    print(f"Loaded {len(term_manager.terminology)} terminology rules")
+    
+    # Final terminology check on the full book
+    print("Performing final terminology check...")
+    final_book, suggestions = term_manager.check_content(book_gen.book_content)
+    if suggestions:
+        print(f"Made {len(suggestions)} terminology adjustments in the final document")
+    
+    # Save complete book
+    with open("book_output/complete_book.txt", "w", encoding="utf-8") as f:
+        f.write(final_book)
+    
+    print("Book generation complete!")
 
 if __name__ == "__main__":
     main()
