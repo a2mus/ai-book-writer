@@ -10,13 +10,21 @@ def main():
     # Get configuration
     agent_config = get_config()
     
-    # Get article parameters
+    # Default article parameters
+    default_topic = "دور وأهمية الحرب الالكترونية في التصدي للطائرات بدون طيار"
+    default_audience = "military personel"
+    default_tone = "formal"
+    default_word_count = "500"
+    default_language = "arabic"
+    
+    # Get article parameters with defaults
     print("\n=== Military Article Generation System ===\n")
-    topic = input("Enter article topic: ")
-    target_audience = input("Enter target audience: ")
-    tone = input("Enter desired tone (formal, technical, etc.): ")
-    word_count = input("Enter target word count: ")
-    language = input("Enter language (arabic/french): ").lower()
+    topic = input(f"Enter article topic [{default_topic}]: ") or default_topic
+    target_audience = input(f"Enter target audience [{default_audience}]: ") or default_audience
+    tone = input(f"Enter desired tone (formal, technical, etc.) [{default_tone}]: ") or default_tone
+
+    word_count = input(f"Enter target word count [{default_word_count}]: ") or default_word_count
+    language = input(f"Enter language (arabic/french) [{default_language}]: ").lower() or default_language
     
     # Initialize terminology manager with military glossary
     glossary_path = "glossaire_2022_sample.csv"

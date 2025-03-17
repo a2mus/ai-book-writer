@@ -78,7 +78,7 @@ Always verify technical accuracy and use established military writing convention
         name="ArticleRequester",
         human_input_mode="TERMINATE",
         system_message="You are requesting a military article with specific terminology requirements.",
-        code_execution_config={"work_dir": "article_output"},
+        code_execution_config=agent_config.get("code_execution_config", {"use_docker": False, "work_dir": "article_output"}),
     )
     
     return {

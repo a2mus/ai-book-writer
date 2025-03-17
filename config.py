@@ -20,6 +20,13 @@ def get_config(local_url: str = "http://localhost:11434/v1") -> Dict:
         "timeout": 600,
         "cache_seed": None,
         
+        # Code execution configuration - disable Docker
+        "code_execution_config": {
+            "use_docker": False,  # Set to False to disable Docker
+            "timeout": 60,
+            "last_n_messages": 3,
+        },
+        
         # Article structure configuration
         "article_structure": {
             "max_sections": 5,

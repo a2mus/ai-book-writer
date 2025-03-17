@@ -25,7 +25,14 @@ class OutlineGenerator:
             max_round=5
         )
         
-        manager = autogen.GroupChatManager(groupchat=outline_group_chat, llm_config=self.agent_config)
+        # Get the LLM config from one of the agents
+        llm_config = outline_creator.llm_config
+        
+        # Initialize manager with llm_config
+        manager = autogen.GroupChatManager(
+            groupchat=outline_group_chat,
+            llm_config=llm_config
+        )
         
         # Calculate section distribution based on word count
         try:
@@ -109,8 +116,8 @@ class OutlineGenerator:
                 start_idx = content.find("OUTLINE:")
                 end_idx = content.find("END OF OUTLINE")
                 
-                if start_idx != -1:
-                    if end_idx != -1:
+                if (start_idx != -1):
+                    if (end_idx != -1):
                         return content[start_idx:end_idx].strip()
                     else:
                         # If no END OF OUTLINE marker, take everything after OUTLINE:
@@ -262,3 +269,10 @@ class OutlineGenerator:
         
         # Ensure proper sequence and number of chapters
         return self._verify_chapter_sequence(chapters, num_chapters)
+
+def generate_outline(agents, topic, target_audience, tone, word_count):
+    """Wrapper function to create an OutlineGenerator and call generate_outline"""
+    # Get the agent config from one of the agents rather than using an index
+    agent_config = next(iter(agents.values())).llm_config
+    generator = OutlineGenerator(agents, agent_config)
+    return generator.generate_outline(topic, target_audience, tone, word_count)

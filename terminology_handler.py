@@ -17,33 +17,68 @@ class TerminologyManager:
         """Load and process the military terminology CSV file"""
         try:
             with open(self.csv_path, mode='r', encoding='utf-8') as file:
+                # Use the DictReader with explicit delimiter for the semicolon-separated file
                 reader = csv.DictReader(file, delimiter=';')
-                for row in reader:
-                    term_entry = {
-                        'id': row['Num'],
-                        'arabic_term': row['MOTS_AR'],
-                        'french_term': row['MOTS_fr'],
-                        'arabic_def': row['DESIGNATION'],
-                        'french_def': row['DESIGNATION_fr'],
-                        'category': row['chairdappartenance'],
-                        'subcategory': row['Sous_Chapitre']
-                    }
+                
+                # Check if the expected columns exist in the CSV file
+                if not reader.fieldnames or 'Num' not in reader.fieldnames:
+                    # The header row might not be recognized correctly - try to fix
+                    file.seek(0)  # Go back to the beginning of the file
+                    header = next(file).strip().split(';')
                     
-                    # Index by both Arabic and French terms
-                    self.arabic_terms[row['MOTS_AR']] = term_entry
-                    self.french_terms[row['MOTS_fr']] = term_entry
+                    # Create a custom reader with the manually extracted headers
+                    file.seek(0)
+                    next(file)  # Skip the header line
                     
-                    # Group by category
-                    category = row['chairdappartenance']
-                    if category not in self.categories:
-                        self.categories[category] = []
-                    self.categories[category].append(term_entry)
-                    
-                    # Store in main terminology dict
-                    self.terminology[row['Num']] = term_entry
+                    # Use a list reader and convert to dict manually
+                    list_reader = csv.reader(file, delimiter=';')
+                    for row_data in list_reader:
+                        if len(row_data) >= 7:  # Make sure the row has enough columns
+                            row = {
+                                'Num': row_data[0],
+                                'Old_Num': row_data[1],
+                                'MOTS_AR': row_data[2],
+                                'MOTS_fr': row_data[3],
+                                'DESIGNATION': row_data[4],
+                                'DESIGNATION_fr': row_data[5],
+                                'chairdappartenance': row_data[6],
+                                'Sous_Chapitre': row_data[7] if len(row_data) > 7 else ''
+                            }
+                            self._process_term_entry(row)
+                else:
+                    # The header was recognized correctly, process normally
+                    for row in reader:
+                        self._process_term_entry(row)
+                        
+            print(f"Successfully loaded {len(self.terminology)} military terms")
         except Exception as e:
             print(f"Error loading terminology file: {e}")
             raise
+    
+    def _process_term_entry(self, row):
+        """Process a single row of terminology data"""
+        term_entry = {
+            'id': row['Num'],
+            'arabic_term': row['MOTS_AR'],
+            'french_term': row['MOTS_fr'],
+            'arabic_def': row['DESIGNATION'],
+            'french_def': row['DESIGNATION_fr'],
+            'category': row['chairdappartenance'],
+            'subcategory': row['Sous_Chapitre']
+        }
+        
+        # Index by both Arabic and French terms
+        self.arabic_terms[row['MOTS_AR']] = term_entry
+        self.french_terms[row['MOTS_fr']] = term_entry
+        
+        # Group by category
+        category = row['chairdappartenance']
+        if category not in self.categories:
+            self.categories[category] = []
+        self.categories[category].append(term_entry)
+        
+        # Store in main terminology dict
+        self.terminology[row['Num']] = term_entry
 
     def check_content(self, content: str, language: str = 'arabic') -> Tuple[str, List[Dict]]:
         """Check content against terminology database and return suggestions"""
@@ -63,7 +98,7 @@ class TerminologyManager:
                 
                 suggestions.append({
                     'term': term,
-                    'definition': entry['arabic_def'] if language == 'arabic' else entry['french_def'],
+                    'definition': entry['arabic_def' if language == 'arabic' else 'french_def'],
                     'category': entry['category'],
                     'context': context
                 })

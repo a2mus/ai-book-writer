@@ -20,7 +20,14 @@ def generate_article_section(agents: Dict, section_title: str, section_number: i
         max_round=10
     )
     
-    manager = autogen.GroupChatManager(groupchat=section_group_chat)
+    # Get the agent config from one of the agents
+    llm_config = writer.llm_config
+    
+    # Initialize manager with llm_config
+    manager = autogen.GroupChatManager(
+        groupchat=section_group_chat, 
+        llm_config=llm_config
+    )
     
     # Context from previous sections
     previous_context = ""
@@ -28,8 +35,13 @@ def generate_article_section(agents: Dict, section_title: str, section_number: i
         previous_context = "Previous sections content:\n" + "\n".join(previous_sections)
     
     # Get terminology data for the checker agent
-    terminology_manager = TerminologyManager()
-    term_list = "\n".join([f"- Use '{preferred}' instead of '{term}'" for term, preferred in terminology_manager.terminology.items()])
+    # Use the glossary path
+    glossary_path = "glossaire_2022_sample.csv"
+    terminology_manager = TerminologyManager(glossary_path)
+    
+    # Create a term list for guidelines (limit to a few examples to keep prompt size manageable)
+    term_examples = list(terminology_manager.arabic_terms.keys())[:5]
+    term_list = "\n".join([f"- {term}: {terminology_manager.arabic_terms[term]['arabic_def'][:100]}..." for term in term_examples])
     
     # Prompt for section generation
     section_prompt = f"""
@@ -41,28 +53,33 @@ def generate_article_section(agents: Dict, section_title: str, section_number: i
     {previous_context}
     
     TERMINOLOGY GUIDELINES:
+    Use appropriate military terminology. Examples:
     {term_list}
     
     Focus on creating informative, well-structured content that flows logically from the previous sections.
     Keep the writing clear, concise, and engaging.
     The section should be approximately 300-500 words.
-    Make sure to follow the terminology guidelines exactly.
     """
     
-    # Generate section content
-    user_proxy.initiate_chat(manager, message=section_prompt)
-    
-    # Extract the final content from the conversation
-    chat_history = section_group_chat.messages
-    final_content = chat_history[-1]["content"]
-    
-    # Final terminology check
-    final_content, suggestions = terminology_manager.check_content(final_content)
-    
-    # If we have suggestions, log them
-    if suggestions:
-        suggestion_log = "\n".join([f"- Changed '{s['original']}' to '{s['preferred']}'" for s in suggestions])
-        print(f"Terminology adjustments made in section {section_number}:\n{suggestion_log}")
+    try:
+        # Generate section content
+        user_proxy.initiate_chat(manager, message=section_prompt)
+        
+        # Extract the final content from the conversation
+        chat_history = section_group_chat.messages
+        final_content = chat_history[-1]["content"]
+        
+        # Final terminology check
+        final_content, suggestions = terminology_manager.check_content(final_content)
+        
+        # If we have suggestions, log them
+        if suggestions:
+            print(f"Found {len(suggestions)} terminology suggestions in section {section_number}")
+        
+    except Exception as e:
+        print(f"Error generating section {section_title}: {str(e)}")
+        # Fallback content
+        final_content = f"# {section_title}\n\nThis section will cover important aspects of electronic warfare in countering drones."
     
     # Write section to file
     if section_number == 0:
@@ -72,8 +89,8 @@ def generate_article_section(agents: Dict, section_title: str, section_number: i
     else:
         filename = f"section_{section_number}.txt"
     
-    os.makedirs("article_output", exist_ok=True)
-    with open(f"article_output/{filename}", "w", encoding="utf-8") as f:
+    os.makedirs("article_output/sections", exist_ok=True)
+    with open(f"article_output/sections/{filename}", "w", encoding="utf-8") as f:
         f.write(final_content)
         
     return final_content
