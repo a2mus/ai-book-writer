@@ -1,0 +1,111 @@
+"""Handle military terminology processing and validation"""
+import csv
+import re
+from typing import Dict, List, Tuple, Optional
+
+class TerminologyManager:
+    def __init__(self, csv_path: str):
+        """Initialize with path to military terminology CSV file"""
+        self.csv_path = csv_path
+        self.terminology = {}
+        self.arabic_terms = {}
+        self.french_terms = {}
+        self.categories = {}
+        self.load_terminology()
+    
+    def load_terminology(self) -> None:
+        """Load and process the military terminology CSV file"""
+        try:
+            with open(self.csv_path, mode='r', encoding='utf-8') as file:
+                reader = csv.DictReader(file, delimiter=';')
+                for row in reader:
+                    term_entry = {
+                        'id': row['Num'],
+                        'arabic_term': row['MOTS_AR'],
+                        'french_term': row['MOTS_fr'],
+                        'arabic_def': row['DESIGNATION'],
+                        'french_def': row['DESIGNATION_fr'],
+                        'category': row['chairdappartenance'],
+                        'subcategory': row['Sous_Chapitre']
+                    }
+                    
+                    # Index by both Arabic and French terms
+                    self.arabic_terms[row['MOTS_AR']] = term_entry
+                    self.french_terms[row['MOTS_fr']] = term_entry
+                    
+                    # Group by category
+                    category = row['chairdappartenance']
+                    if category not in self.categories:
+                        self.categories[category] = []
+                    self.categories[category].append(term_entry)
+                    
+                    # Store in main terminology dict
+                    self.terminology[row['Num']] = term_entry
+        except Exception as e:
+            print(f"Error loading terminology file: {e}")
+            raise
+
+    def check_content(self, content: str, language: str = 'arabic') -> Tuple[str, List[Dict]]:
+        """Check content against terminology database and return suggestions"""
+        terms_dict = self.arabic_terms if language == 'arabic' else self.french_terms
+        suggestions = []
+        modified_content = content
+        
+        for term, entry in terms_dict.items():
+            # Create pattern that handles Arabic text direction and variations
+            pattern = r'\b' + re.escape(term) + r'\b'
+            matches = re.finditer(pattern, content, re.UNICODE | re.MULTILINE)
+            
+            for match in matches:
+                context_start = max(0, match.start() - 50)
+                context_end = min(len(content), match.end() + 50)
+                context = content[context_start:context_end]
+                
+                suggestions.append({
+                    'term': term,
+                    'definition': entry['arabic_def'] if language == 'arabic' else entry['french_def'],
+                    'category': entry['category'],
+                    'context': context
+                })
+        
+        return modified_content, suggestions
+
+    def suggest_terms_for_topic(self, topic: str, language: str = 'arabic') -> List[Dict]:
+        """Suggest relevant military terms for a given topic"""
+        suggestions = []
+        terms = self.arabic_terms if language == 'arabic' else self.french_terms
+        
+        # Convert topic to lowercase for matching
+        topic_lower = topic.lower()
+        
+        for term, entry in terms.items():
+            # Check if topic appears in term, definition, or category
+            term_matches = topic_lower in term.lower()
+            def_field = 'arabic_def' if language == 'arabic' else 'french_def'
+            def_matches = topic_lower in entry[def_field].lower()
+            category_matches = topic_lower in entry['category'].lower()
+            
+            if term_matches or def_matches or category_matches:
+                suggestions.append(entry)
+        
+        return suggestions
+
+    def get_category_terms(self, category: str) -> List[Dict]:
+        """Get all terms in a specific category"""
+        return self.categories.get(category, [])
+
+    def get_term_definition(self, term: str, language: str = 'arabic') -> Optional[str]:
+        """Get the definition of a specific term"""
+        terms_dict = self.arabic_terms if language == 'arabic' else self.french_terms
+        if term in terms_dict:
+            return terms_dict[term]['arabic_def' if language == 'arabic' else 'french_def']
+        return None
+
+    def get_related_terms(self, term: str, language: str = 'arabic') -> List[Dict]:
+        """Get terms related to a given term (same category)"""
+        terms_dict = self.arabic_terms if language == 'arabic' else self.french_terms
+        if term not in terms_dict:
+            return []
+            
+        category = terms_dict[term]['category']
+        return [t for t in self.categories[category] if t['arabic_term' if language == 'arabic' else 'french_term'] != term]

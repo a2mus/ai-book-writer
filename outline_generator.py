@@ -1,4 +1,4 @@
-"""Generate article outlines"""
+"""Generate outlines for military articles with terminology support"""
 import os
 import autogen
 from typing import Dict, List
@@ -15,32 +15,63 @@ class OutlineGenerator:
 
         outline_creator = self.agents["outline_creator"]
         editor = self.agents["editor"]
+        terminology_checker = self.agents["terminology_checker"]
         user_proxy = self.agents["user_proxy"]
         
         # Create group chat for outline creation
         outline_group_chat = autogen.GroupChat(
-            agents=[user_proxy, outline_creator, editor],
+            agents=[user_proxy, outline_creator, editor, terminology_checker],
             messages=[],
             max_round=5
         )
         
         manager = autogen.GroupChatManager(groupchat=outline_group_chat, llm_config=self.agent_config)
         
-        # Generate outline prompt
+        # Calculate section distribution based on word count
+        try:
+            total_words = int(word_count)
+            intro_words = min(250, total_words * 0.15)
+            conclusion_words = min(250, total_words * 0.15)
+            remaining_words = total_words - (intro_words + conclusion_words)
+            section_words = remaining_words / 3  # Default to 3 main sections
+        except ValueError:
+            intro_words = 250
+            section_words = 500
+            conclusion_words = 250
+        
+        # Generate outline prompt with military terminology focus
         prompt = f"""
-        Create a detailed outline for an article on "{topic}".
+        Create a detailed outline for a military article on "{topic}".
         
-        Target audience: {target_audience}
-        Tone: {tone}
-        Target word count: {word_count} words
+        Parameters:
+        - Target audience: {target_audience}
+        - Tone: {tone}
+        - Total word count: {word_count} words
         
-        The outline should include:
-        1. Introduction (key points to address)
-        2. 3-5 main sections with descriptive titles
-        3. Key points to cover in each section
-        4. Conclusion (key takeaways)
+        Structure:
+        1. Introduction ({int(intro_words)} words)
+           - Context and importance of the topic
+           - Key military concepts to be covered
+           - Article objectives
         
-        Format the outline clearly with section titles and bullet points for key content in each section.
+        2. Main Sections (3-5 sections, ~{int(section_words)} words each)
+           - Each section should focus on specific military aspects
+           - Include relevant military terminology and definitions
+           - Ensure logical progression between sections
+        
+        3. Conclusion ({int(conclusion_words)} words)
+           - Summary of key military concepts covered
+           - Strategic implications
+           - Final insights
+        
+        Requirements:
+        - Use precise military terminology
+        - Maintain technical accuracy
+        - Follow military writing conventions
+        - Include clear section headings
+        - List key military terms to be defined in each section
+        
+        Format the outline with clear section titles and bullet points for key content.
         """
         
         try:

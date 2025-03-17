@@ -1,108 +1,107 @@
-"""Main script for running the book generation system"""
+"""Main script for running the article generation system with military terminology support"""
 from config import get_config
-from agents import BookAgents
-from book_generator import BookGenerator
-from outline_generator import OutlineGenerator
+from agents import create_agents
+from article_generator import generate_article_section
+from outline_generator import generate_outline
 from terminology_handler import TerminologyManager
+import os
 
 def main():
     # Get configuration
     agent_config = get_config()
-
     
-    # Initial prompt for the book
-    initial_prompt = """
-    Create a story in my established writing style with these key elements:
-    Its important that it has several key storylines that intersect and influence each other. The story should be set in a modern corporate environment, with a focus on technology and finance. The protagonist is a software engineer named Dane who has just completed a groundbreaking stock prediction algorithm. The algorithm predicts a catastrophic market crash, but Dane oversleeps and must rush to an important presentation to share his findings with executives. The tension arises from the questioning of whether his "error" might actually be correct.
-
-    The piece is written in third-person limited perspective, following Dane's thoughts and experiences. The prose is direct and technical when describing the protagonist's work, but becomes more introspective during personal moments. The author employs a mix of dialogue and internal monologue, with particular attention to time progression and technical details around the algorithm and stock predictions.
-    Story Arch:
-
-    Setup: Dane completes a groundbreaking stock prediction algorithm late at night
-    Initial Conflict: The algorithm predicts a catastrophic market crash
-    Rising Action: Dane oversleeps and must rush to an important presentation
-    Climax: The presentation to executives where he must explain his findings
-    Tension Point: The questioning of whether his "error" might actually be correct
-
-    Characters:
-
-    Dane: The protagonist; a dedicated software engineer who prioritizes work over personal life. Wears grey polo shirts on Thursdays, tends to get lost in his work, and struggles with work-life balance. More comfortable with code than public speaking.
-    Gary: Dane's nervous boss who seems caught between supporting Dane and managing upper management's expectations
-    Jonathan Morego: Senior VP of Investor Relations who raises pointed questions about the validity of Dane's predictions
-    Silence: Brief mention as an Uber driver
-    C-Level Executives: Present as an audience during the presentation
-
-    World Description:
-    The story takes place in a contemporary corporate setting, likely a financial technology company. The world appears to be our modern one, with familiar elements like:
-
-    Major tech companies (Tesla, Google, Apple, Microsoft)
-    Stock market and financial systems
-    Modern technology (neural networks, predictive analytics)
-    Urban environment with rideshare services like Uber
-    Corporate hierarchy and office culture
-
-    The story creates tension between the familiar corporate world and the potential for an unprecedented financial catastrophe, blending elements of technical thriller with workplace drama. The setting feels grounded in reality but hints at potentially apocalyptic economic consequences.
-    """
-
-    num_chapters = 25
+    # Get article parameters
+    print("\n=== Military Article Generation System ===\n")
+    topic = input("Enter article topic: ")
+    target_audience = input("Enter target audience: ")
+    tone = input("Enter desired tone (formal, technical, etc.): ")
+    word_count = input("Enter target word count: ")
+    language = input("Enter language (arabic/french): ").lower()
+    
+    # Initialize terminology manager with military glossary
+    glossary_path = "glossaire_2022_sample.csv"
+    term_manager = TerminologyManager(glossary_path)
+    print(f"\nLoaded {len(term_manager.terminology)} military terms from glossary")
+    
+    # Get relevant terminology suggestions for the topic
+    relevant_terms = term_manager.suggest_terms_for_topic(topic, language)
+    if relevant_terms:
+        print("\nRelevant military terms for your topic:")
+        for term in relevant_terms[:5]:  # Show top 5 relevant terms
+            if language == "arabic":
+                print(f"- {term['arabic_term']}: {term['arabic_def']}")
+            else:
+                print(f"- {term['french_term']}: {term['french_def']}")
+    
     # Create agents
-    outline_agents = BookAgents(agent_config)
-    agents = outline_agents.create_agents(initial_prompt, num_chapters)
+    print("\nInitializing specialized agents...")
+    agents = create_agents(agent_config)
     
     # Generate the outline
-    outline_gen = OutlineGenerator(agents, agent_config)
-    print("Generating book outline...")
-    outline = outline_gen.generate_outline(initial_prompt, num_chapters)
+    print("\nGenerating article outline...")
+    outline = generate_outline(agents, topic, target_audience, tone, word_count)
     
-    # Create new agents with outline context
-    book_agents = BookAgents(agent_config, outline)
-    agents_with_context = book_agents.create_agents(initial_prompt, num_chapters)
+    # Create output directory if it doesn't exist
+    os.makedirs("article_output", exist_ok=True)
     
-    # Initialize book generator with contextual agents
-    book_gen = BookGenerator(agents_with_context, agent_config, outline)
+    # Save outline
+    with open("article_output/outline.txt", "w", encoding="utf-8") as f:
+        f.write(outline)
+    print("Outline saved to article_output/outline.txt")
     
-    # Print the generated outline
-    print("\nGenerated Outline:")
-    for chapter in outline:
-        print(f"\nChapter {chapter['chapter_number']}: {chapter['title']}")
-        print("-" * 50)
-        print(chapter['prompt'])
+    # Generate introduction
+    print("\nGenerating introduction...")
+    intro = generate_article_section(agents, "Introduction", 0, outline)
     
-    # Save the outline for reference
-    print("\nSaving outline to file...")
-    with open("book_output/outline.txt", "w") as f:
-        for chapter in outline:
-            f.write(f"\nChapter {chapter['chapter_number']}: {chapter['title']}\n")
-            f.write("-" * 50 + "\n")
-            f.write(chapter['prompt'] + "\n")
+    # Keep track of generated sections for context
+    generated_sections = [intro]
     
-    # Generate the book using the outline
-    print("\nGenerating book chapters...")
-    if outline:
-        book_gen.generate_book(outline)
-    else:
-        print("Error: No outline was generated.")
+    # Extract section titles from outline and generate each section
+    sections = []
+    for line in outline.split("\n"):
+        if line.strip().startswith("Section") or line.strip().startswith("##"):
+            sections.append(line.strip())
     
-    # Terminology file
-    terminology_path = input("Enter terminology CSV path (default: terminology.csv): ")
-    if not terminology_path:
-        terminology_path = "terminology.csv"
+    # Generate each section
+    for i, section_title in enumerate(sections, 1):
+        print(f"\nGenerating section {i}: {section_title}...")
+        section_content = generate_article_section(
+            agents, 
+            section_title, 
+            i, 
+            outline, 
+            generated_sections
+        )
+        generated_sections.append(section_content)
     
-    # Initialize terminology manager
-    term_manager = TerminologyManager(terminology_path)
-    print(f"Loaded {len(term_manager.terminology)} terminology rules")
+    # Generate conclusion
+    print("\nGenerating conclusion...")
+    conclusion = generate_article_section(
+        agents,
+        "Conclusion",
+        -1,
+        outline,
+        generated_sections
+    )
     
-    # Final terminology check on the full book
-    print("Performing final terminology check...")
-    final_book, suggestions = term_manager.check_content(book_gen.book_content)
+    # Combine into complete article
+    print("\nAssembling complete article...")
+    complete_article = intro + "\n\n"
+    for i, content in enumerate(generated_sections[1:], 1):
+        complete_article += f"## {sections[i-1]}\n\n{content}\n\n"
+    complete_article += f"## Conclusion\n\n{conclusion}"
+    
+    # Final terminology check
+    print("\nPerforming final terminology verification...")
+    final_article, suggestions = term_manager.check_content(complete_article, language)
     if suggestions:
         print(f"Made {len(suggestions)} terminology adjustments in the final document")
     
-    # Save complete book
-    with open("book_output/complete_book.txt", "w", encoding="utf-8") as f:
-        f.write(final_book)
+    # Save complete article
+    with open("article_output/complete_article.txt", "w", encoding="utf-8") as f:
+        f.write(final_article)
     
-    print("Book generation complete!")
+    print("\nArticle generation complete! Output saved to article_output/complete_article.txt")
 
 if __name__ == "__main__":
     main()
