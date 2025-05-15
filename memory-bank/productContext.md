@@ -1,24 +1,17 @@
 # Product Context
 
-## Problem Statement
-Military analysts need to rapidly produce standardized technical documents with precise terminology, but manual writing is time-consuming and prone to inconsistencies.
+## Purpose
+The AI Article Writer project aims to automate the generation of high-quality articles, specifically focusing on content that requires accurate and consistent use of military terminology.
 
-## Key Features
-- Multi-agent collaborative writing
-- Automated terminology enforcement
-- Structured outline generation
-- Progressive content refinement
-- Output formatting standardization
+## Problem Solved
+This system addresses the challenge of creating technical or specialized articles where precise language and adherence to specific terminology standards are critical. It helps ensure that military terms are used correctly and consistently, which is particularly important for documentation, reports, or educational materials.
 
-## User Workflow
-1. Input topic/parameters
-2. System generates outline
-3. Agents collaborate to write sections
-4. Terminology is checked and corrected
-5. Final article is assembled and formatted
+## How it Works
+The system operates through a collaborative multi-agent framework. Users provide a topic, and specialized agents (Writer, Editor, Researcher, Outline Creator, Formatter, Terminology Checker) work together in a pipeline. The process involves generating an outline, writing content section by section, verifying terminology against a military glossary, and assembling the final article.
 
 ## User Experience Goals
-- Intuitive command-line interface
-- Fast article generation
-- High accuracy in terminology
-- Customizable output format
+- Provide an easy way for users to request articles on specific topics.
+- Generate articles that are well-structured, informative, and engaging.
+- Ensure the final output adheres strictly to military terminology standards.
+- Support content generation in both Arabic and French.
+- Offer a clear and understandable process, even with the complex multi-agent backend.

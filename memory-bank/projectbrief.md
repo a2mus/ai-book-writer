@@ -1,23 +1,23 @@
 # Project Brief
 
-## Core Mission
-Develop an AI-powered article generation system using multi-agent collaboration to produce structured, terminology-consistent documents for military applications.
+## Project Name
+AI Article Writer with Military Terminology Support
 
-## Key Goals
-1. Implement AutoGen-based agent framework
-2. Ensure military terminology consistency via glossary integration
-3. Maintain modular architecture for extensibility
-4. Produce professional-grade article formatting
-5. Enable collaborative content refinement through agent interactions
+## Core Requirements
 
-## Success Criteria
-- Generate complete articles within 5 minutes
-- Achieve 98% terminology consistency
-- Support 5000+ word articles
-- Maintain clear section transitions
+- Generate articles on specific topics.
+- Ensure accurate and consistent use of military terminology.
+- Support bilingual content (Arabic/French).
+- Utilize a multi-agent framework for collaborative generation.
+- Integrate with a military glossary database.
 
-## Scope Boundaries
-- Focus on text content generation
-- Military terminology domain-specific
-- English language primary focus
-- Desktop command-line interface only
+## Core Goals
+
+- Produce high-quality, informative articles.
+- Maintain terminology accuracy and consistency.
+- Provide a modular and extensible system architecture.
+- Enhance user experience through improved interfaces and features.
+- Optimize performance and ensure system robustness.
+
+## Project Status (as of March 2024)
+The project has completed core infrastructure, agent system definition, military terminology support, and the basic article generation pipeline. Work is in progress on testing, output formatting, and error handling. Pending tasks include advanced features, quality assurance, UI improvements, and infrastructure enhancements.
