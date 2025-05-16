@@ -1,6 +1,7 @@
 """Define specialized agents for military article generation"""
 from typing import Dict, List
 import autogen
+from utils.web_search import perform_web_search
 
 def create_agents(agent_config: Dict) -> Dict:
     """Create the specialized agents for article generation"""
@@ -73,12 +74,49 @@ Always verify technical accuracy and use established military writing convention
         llm_config=agent_config,
     )
     
+    # Web Searcher agent - fetches updated data from the internet
+    web_searcher_llm_config = agent_config.copy()
+    web_searcher_llm_config["tools"] = [
+        {
+            "type": "function",
+            "function": {
+                "name": "perform_web_search",
+                "description": "Searches the web for a given query to find up-to-date information.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query to find information about.",
+                        },
+                        "num_results": {
+                            "type": "integer",
+                            "description": "The desired number of search results.",
+                            "default": 3,
+                        },
+                    },
+                    "required": ["query"],
+                },
+            },
+        }
+    ]
+    web_searcher = autogen.AssistantAgent(
+        name="WebSearcher",
+        system_message="You are a Web Search Specialist. When you need to find information from the internet, use the 'perform_web_search' tool.",
+        llm_config=web_searcher_llm_config,
+    )
+    
     # User proxy for interaction
     user_proxy = autogen.UserProxyAgent(
         name="ArticleRequester",
         human_input_mode="TERMINATE",
         system_message="You are requesting a military article with specific terminology requirements.",
         code_execution_config=agent_config.get("code_execution_config", {"use_docker": False, "work_dir": "article_output"}),
+    )
+    user_proxy.register_function(
+        function_map={
+            "perform_web_search": perform_web_search
+        }
     )
     
     return {
@@ -88,5 +126,6 @@ Always verify technical accuracy and use established military writing convention
         "outline_creator": outline_creator,
         "formatter": formatter,
         "terminology_checker": terminology_checker,
+        "web_searcher": web_searcher,
         "user_proxy": user_proxy
     }

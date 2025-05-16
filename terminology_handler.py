@@ -85,25 +85,72 @@ class TerminologyManager:
         terms_dict = self.arabic_terms if language == 'arabic' else self.french_terms
         suggestions = []
         modified_content = content
-        
+
         for term, entry in terms_dict.items():
             # Create pattern that handles Arabic text direction and variations
             pattern = r'\b' + re.escape(term) + r'\b'
             matches = re.finditer(pattern, content, re.UNICODE | re.MULTILINE)
-            
+
             for match in matches:
                 context_start = max(0, match.start() - 50)
                 context_end = min(len(content), match.end() + 50)
                 context = content[context_start:context_end]
-                
+
                 suggestions.append({
                     'term': term,
                     'definition': entry['arabic_def' if language == 'arabic' else 'french_def'],
                     'category': entry['category'],
                     'context': context
                 })
-        
+
         return modified_content, suggestions
+
+    def check_and_replace_content(self, content: str, language: str = 'arabic', replacement_map: Optional[Dict[str, str]] = None) -> Tuple[str, List[Dict]]:
+        """
+        Check content against terminology and perform replacements.
+        replacement_map: A dictionary where keys are terms to find (potentially incorrect)
+                         and values are the correct glossary terms to replace them with.
+        Returns modified content and a list of corrections made (or glossary suggestions if no replacements).
+        """
+        modified_content = content
+        corrections_made = []
+
+        # 1. Perform replacements if a map is provided
+        if replacement_map:
+            for term_to_find, correct_term in replacement_map.items():
+                pattern = r'\b' + re.escape(term_to_find) + r'\b'
+                occurrences = len(re.findall(pattern, modified_content, re.UNICODE | re.MULTILINE))
+                if occurrences > 0:
+                    modified_content = re.sub(pattern, correct_term, modified_content, flags=re.UNICODE | re.MULTILINE)
+                    corrections_made.append({
+                        "found": term_to_find,
+                        "replaced_with": correct_term,
+                        "count": occurrences
+                    })
+
+        # 2. Identify glossary terms present in the (potentially modified) content
+        terms_dict = self.arabic_terms if language == 'arabic' else self.french_terms
+        suggestions_found = []
+        for term, entry in terms_dict.items():
+            pattern = r'\b' + re.escape(term) + r'\b'
+            matches = re.finditer(pattern, modified_content, re.UNICODE | re.MULTILINE)
+            for match in matches:
+                context_start = max(0, match.start() - 50)
+                context_end = min(len(modified_content), match.end() + 50)
+                context = modified_content[context_start:context_end]
+                suggestions_found.append({
+                    'term': term,
+                    'definition': entry['arabic_def' if language == 'arabic' else 'french_def'],
+                    'category': entry['category'],
+                    'context': context,
+                    'status': 'identified_in_text'
+                })
+
+        final_suggestions = corrections_made if corrections_made else suggestions_found
+        if corrections_made:
+            print(f"Made {len(corrections_made)} types of replacements.")
+
+        return modified_content, final_suggestions
 
     def suggest_terms_for_topic(self, topic: str, language: str = 'arabic') -> List[Dict]:
         """Suggest relevant military terms for a given topic"""

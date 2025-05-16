@@ -15,3 +15,4 @@ mypy>=0.910  # For type checking
 # Optional dependencies
 tqdm>=4.65.0  # For progress bars
 python-dotenv>=1.0.0  # For environment variable management
+duckduckgo-search>=4.4.2  # For robust web search tool

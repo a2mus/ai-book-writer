@@ -78,6 +78,7 @@ class OutlineGenerator:
         - Include clear section headings
         - List key military terms to be defined in each section
         
+        - Write the entire response in [LANGUAGE], except for technical or military terms, which may be in English or French if there is no direct translation. Do NOT write full sentences or paragraphs in any language other than [LANGUAGE]. If you do, your answer will be rejected.
         Format the outline with clear section titles and bullet points for key content.
         """
         

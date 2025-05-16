@@ -5,11 +5,12 @@ from typing import Dict, List
 def get_config(local_url: str = "http://localhost:11434/v1") -> Dict:
     """Get the configuration for the agents"""
     
-    # Ollama config with command-r7b-arabic model
+    # DeepSeek config
     config_list = [{
-        'model': 'command-r7b-arabic:7b-02-2025-q8_0',
-        'base_url': local_url,
-        'api_key': "ollama"
+        'model': 'deepseek-chat',  # Change to your preferred DeepSeek model if needed
+        'base_url': "https://api.deepseek.com/v1",
+        'api_key': "sk-ea77e6fdbf114f66a51283c1af3d4a21",
+        'api_type': "openai"
     }]
 
     # Common configuration for all agents

@@ -8,8 +8,23 @@ import os
 
 def main():
     # Get configuration
-    agent_config = get_config()
-    
+    config = get_config()
+
+    # Separate llm_config from other configurations
+    llm_config = {
+        "seed": config.get("seed"),
+        "temperature": config.get("temperature"),
+        "config_list": config.get("config_list"),
+        "timeout": config.get("timeout"),
+        "cache_seed": config.get("cache_seed"),
+    }
+
+    # Extract other configuration sections
+    code_execution_config = config.get("code_execution_config")
+    article_structure_config = config.get("article_structure")
+    terminology_config = config.get("terminology")
+    output_config = config.get("output")
+
     # Default article parameters
     default_topic = "دور وأهمية الحرب الالكترونية في التصدي للطائرات بدون طيار"
     default_audience = "military personel"
@@ -43,7 +58,7 @@ def main():
     
     # Create agents
     print("\nInitializing specialized agents...")
-    agents = create_agents(agent_config)
+    agents = create_agents(llm_config)
     
     # Generate the outline
     print("\nGenerating article outline...")
