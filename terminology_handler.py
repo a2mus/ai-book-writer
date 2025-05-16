@@ -15,6 +15,7 @@ class TerminologyManager:
     
     def load_terminology(self) -> None:
         """Load and process the military terminology CSV file"""
+        print(f"INFO: [TerminologyManager] Attempting to load terminology from: {self.csv_path}")
         try:
             with open(self.csv_path, mode='r', encoding='utf-8') as file:
                 # Use the DictReader with explicit delimiter for the semicolon-separated file
@@ -50,9 +51,9 @@ class TerminologyManager:
                     for row in reader:
                         self._process_term_entry(row)
                         
-            print(f"Successfully loaded {len(self.terminology)} military terms")
+            print(f"INFO: [TerminologyManager] Successfully loaded {len(self.terminology)} military terms.")
         except Exception as e:
-            print(f"Error loading terminology file: {e}")
+            print(f"ERROR: [TerminologyManager] Error loading terminology file: {e}")
             raise
     
     def _process_term_entry(self, row):
@@ -82,12 +83,14 @@ class TerminologyManager:
 
     def check_content(self, content: str, language: str = 'arabic') -> Tuple[str, List[Dict]]:
         """Check content against terminology database and return suggestions"""
+        print(f"INFO: [TerminologyManager] Checking content for language: {language}. Content length: {len(content)}")
         terms_dict = self.arabic_terms if language == 'arabic' else self.french_terms
         suggestions = []
         modified_content = content
 
         for term, entry in terms_dict.items():
             # Create pattern that handles Arabic text direction and variations
+            # print(f"DEBUG: [TerminologyManager] Checking for term: {term}") # Can be very verbose
             pattern = r'\b' + re.escape(term) + r'\b'
             matches = re.finditer(pattern, content, re.UNICODE | re.MULTILINE)
 
@@ -95,6 +98,7 @@ class TerminologyManager:
                 context_start = max(0, match.start() - 50)
                 context_end = min(len(content), match.end() + 50)
                 context = content[context_start:context_end]
+                print(f"DEBUG: [TerminologyManager] Found term '{term}' in content.")
 
                 suggestions.append({
                     'term': term,
@@ -103,6 +107,7 @@ class TerminologyManager:
                     'context': context
                 })
 
+        print(f"INFO: [TerminologyManager] Found {len(suggestions)} potential terminology suggestions.")
         return modified_content, suggestions
 
     def check_and_replace_content(self, content: str, language: str = 'arabic', replacement_map: Optional[Dict[str, str]] = None) -> Tuple[str, List[Dict]]:
@@ -112,6 +117,7 @@ class TerminologyManager:
                          and values are the correct glossary terms to replace them with.
         Returns modified content and a list of corrections made (or glossary suggestions if no replacements).
         """
+        print(f"INFO: [TerminologyManager] Checking and replacing content. Language: {language}. Replacement map provided: {bool(replacement_map)}")
         modified_content = content
         corrections_made = []
 
@@ -122,6 +128,7 @@ class TerminologyManager:
                 occurrences = len(re.findall(pattern, modified_content, re.UNICODE | re.MULTILINE))
                 if occurrences > 0:
                     modified_content = re.sub(pattern, correct_term, modified_content, flags=re.UNICODE | re.MULTILINE)
+                    print(f"DEBUG: [TerminologyManager] Replaced '{term_to_find}' with '{correct_term}' ({occurrences} occurrences).")
                     corrections_made.append({
                         "found": term_to_find,
                         "replaced_with": correct_term,
@@ -138,6 +145,7 @@ class TerminologyManager:
                 context_start = max(0, match.start() - 50)
                 context_end = min(len(modified_content), match.end() + 50)
                 context = modified_content[context_start:context_end]
+                # print(f"DEBUG: [TerminologyManager] Identified glossary term '{term}' in content post-replacement.") # Can be verbose
                 suggestions_found.append({
                     'term': term,
                     'definition': entry['arabic_def' if language == 'arabic' else 'french_def'],
@@ -148,12 +156,13 @@ class TerminologyManager:
 
         final_suggestions = corrections_made if corrections_made else suggestions_found
         if corrections_made:
-            print(f"Made {len(corrections_made)} types of replacements.")
+            print(f"INFO: [TerminologyManager] Made {len(corrections_made)} types of replacements.")
+        print(f"INFO: [TerminologyManager] Returning {len(final_suggestions)} suggestions/corrections.")
 
         return modified_content, final_suggestions
 
     def suggest_terms_for_topic(self, topic: str, language: str = 'arabic') -> List[Dict]:
-        """Suggest relevant military terms for a given topic"""
+        print(f"INFO: [TerminologyManager] Suggesting terms for topic: '{topic}', language: {language}")
         suggestions = []
         terms = self.arabic_terms if language == 'arabic' else self.french_terms
         
@@ -169,22 +178,26 @@ class TerminologyManager:
             
             if term_matches or def_matches or category_matches:
                 suggestions.append(entry)
+                # print(f"DEBUG: [TerminologyManager] Suggested term '{entry['arabic_term' if language == 'arabic' else 'french_term']}' for topic '{topic}'.")
         
+        print(f"INFO: [TerminologyManager] Found {len(suggestions)} relevant terms for topic '{topic}'.")
         return suggestions
 
     def get_category_terms(self, category: str) -> List[Dict]:
         """Get all terms in a specific category"""
+        print(f"INFO: [TerminologyManager] Getting terms for category: {category}")
         return self.categories.get(category, [])
 
     def get_term_definition(self, term: str, language: str = 'arabic') -> Optional[str]:
         """Get the definition of a specific term"""
+        print(f"INFO: [TerminologyManager] Getting definition for term: '{term}', language: {language}")
         terms_dict = self.arabic_terms if language == 'arabic' else self.french_terms
         if term in terms_dict:
             return terms_dict[term]['arabic_def' if language == 'arabic' else 'french_def']
         return None
 
     def get_related_terms(self, term: str, language: str = 'arabic') -> List[Dict]:
-        """Get terms related to a given term (same category)"""
+        print(f"INFO: [TerminologyManager] Getting related terms for: '{term}', language: {language}")
         terms_dict = self.arabic_terms if language == 'arabic' else self.french_terms
         if term not in terms_dict:
             return []

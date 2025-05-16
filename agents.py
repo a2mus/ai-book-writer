@@ -10,7 +10,9 @@ def create_agents(agent_config: Dict) -> Dict:
     writer = autogen.AssistantAgent(
         name="Writer",
         system_message="""You are an expert military writer who creates clear, technically accurate content.
-Focus on using precise military terminology and maintaining formal tone.
+Your primary goal is to generate the body content for a given section title and outline details.
+Do NOT repeat the main section title in your output. Use sub-headings (e.g., H3, H4) within your content as appropriate.
+Focus on using precise military terminology, maintaining a formal tone, and adhering strictly to the provided outline segment for structure and content focus.
 Always verify technical accuracy and use established military writing conventions.""",
         llm_config=agent_config,
     )
@@ -23,7 +25,9 @@ Always verify technical accuracy and use established military writing convention
 - Technical accuracy
 - Clarity and coherence
 - Formal military writing style
-- Logical flow between sections""",
+- Logical flow between sections
+- Ensuring the generated section strictly follows the requested structure (e.g., heading levels, paragraph/bullet point mix) and word count guidelines from the outline.
+- Removing redundancies and improving conciseness. Ensure the main section title is NOT repeated in the content.""",
         llm_config=agent_config,
     )
     
