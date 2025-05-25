@@ -33,53 +33,94 @@ class TerminologyManager:
                     
                     # Use a list reader and convert to dict manually
                     list_reader = csv.reader(file, delimiter=';')
-                    for row_data in list_reader:
-                        if len(row_data) >= 7:  # Make sure the row has enough columns
-                            row = {
-                                'Num': row_data[0],
-                                'Old_Num': row_data[1],
-                                'MOTS_AR': row_data[2],
-                                'MOTS_fr': row_data[3],
-                                'DESIGNATION': row_data[4],
-                                'DESIGNATION_fr': row_data[5],
-                                'chairdappartenance': row_data[6],
-                                'Sous_Chapitre': row_data[7] if len(row_data) > 7 else ''
-                            }
-                            self._process_term_entry(row)
+                    # i+2 because list_reader starts after header, and lines are 1-indexed, i is 0-indexed.
+                    for i, row_data in enumerate(list_reader): 
+                        if len(row_data) >= len(header): # Check against actual header length
+                            row = dict(zip(header, row_data)) # Create a dict from header and row_data
+                            self._process_term_entry(row, row_number=i+2) 
+                        else:
+                            print(f"WARNING: [TerminologyManager] Skipping row {i+2} in '{self.csv_path}' due to unexpected number of columns. Expected {len(header)}, got {len(row_data)}. Data: {row_data}")
                 else:
                     # The header was recognized correctly, process normally
-                    for row in reader:
-                        self._process_term_entry(row)
-                        
-            print(f"INFO: [TerminologyManager] Successfully loaded {len(self.terminology)} military terms.")
+                    # i+2 because reader starts after header, and lines are 1-indexed, i is 0-indexed.
+                    for i, row in enumerate(reader):
+                        self._process_term_entry(row, row_number=i+2)
+            
+            # After attempting to load, check if any terms were actually loaded.
+            if not self.terminology:
+                # This condition implies the file might have been empty, had only headers, 
+                # or all rows were skippable due to missing essential fields or column count issues.
+                # Differentiate based on whether reader.fieldnames was populated.
+                if not reader.fieldnames: # This implies the file was empty or header couldn't be read
+                     print(f"WARNING: [TerminologyManager] No terminology loaded. File '{self.csv_path}' might be empty or its header row is malformed (expected 'Num', ... with ';' delimiter).")
+                else: # Headers were read, but no valid data rows followed or all were skipped.
+                     print(f"WARNING: [TerminologyManager] No terminology loaded. File '{self.csv_path}' contains headers but no valid data rows, or all rows were skipped.")
+            else:
+                print(f"INFO: [TerminologyManager] Successfully loaded {len(self.terminology)} military terms from '{self.csv_path}'.")
+
+        except FileNotFoundError:
+            print(f"ERROR: [TerminologyManager] Terminology file not found at path: {self.csv_path}")
+            raise
+        except PermissionError:
+            print(f"ERROR: [TerminologyManager] Permission denied when trying to read terminology file: {self.csv_path}")
+            raise
+        except csv.Error as e:
+            # csv.Error is the base class for exceptions raised by the csv module.
+            # This can include issues with the delimiter, quoting, or other CSV format violations.
+            # The error 'iterator should return strings, not bytes' can occur if file not opened in text mode ('r' vs 'rb').
+            # Our 'utf-8' encoding and mode='r' should prevent that, but good to be aware.
+            print(f"ERROR: [TerminologyManager] CSV parsing error in file '{self.csv_path}'. Details: {e}. Please ensure the file is a valid semicolon-delimited CSV with UTF-8 encoding.")
+            raise
+        except StopIteration: # Raised by next() if the file is completely empty (no header, no data)
+            print(f"ERROR: [TerminologyManager] Terminology file '{self.csv_path}' is completely empty (no header row found).")
+            # Following the hard-fail policy.
+            raise RuntimeError(f"Terminology file '{self.csv_path}' is completely empty.")
         except Exception as e:
-            print(f"ERROR: [TerminologyManager] Error loading terminology file: {e}")
+            # Catch-all for any other unexpected exceptions
+            print(f"ERROR: [TerminologyManager] An unexpected error occurred while loading terminology from '{self.csv_path}': {e}")
             raise
     
-    def _process_term_entry(self, row):
-        """Process a single row of terminology data"""
+    def _process_term_entry(self, row, row_number=None):
+        """Process a single row of terminology data. Added row_number for logging."""
+        # Use .get() to avoid KeyError and provide defaults or skip if essential data is missing
+        num = row.get('Num')
+        mots_ar = row.get('MOTS_AR')
+        mots_fr = row.get('MOTS_fr')
+
+        # Basic validation: Num, MOTS_AR, and MOTS_fr are essential
+        if not all([num, mots_ar, mots_fr]):
+            error_msg = f"Skipping row"
+            if row_number:
+                error_msg += f" at approx line {row_number}"
+            error_msg += f" due to missing essential fields (Num, MOTS_AR, MOTS_fr). Row data: {row}"
+            print(f"WARNING: [TerminologyManager] {error_msg}")
+            return # Skip this entry
+
         term_entry = {
-            'id': row['Num'],
-            'arabic_term': row['MOTS_AR'],
-            'french_term': row['MOTS_fr'],
-            'arabic_def': row['DESIGNATION'],
-            'french_def': row['DESIGNATION_fr'],
-            'category': row['chairdappartenance'],
-            'subcategory': row['Sous_Chapitre']
+            'id': num,
+            'arabic_term': mots_ar,
+            'french_term': mots_fr,
+            'arabic_def': row.get('DESIGNATION', ''), 
+            'french_def': row.get('DESIGNATION_fr', ''), 
+            'category': row.get('chairdappartenance', 'Uncategorized'),
+            'subcategory': row.get('Sous_Chapitre', '')
         }
         
         # Index by both Arabic and French terms
-        self.arabic_terms[row['MOTS_AR']] = term_entry
-        self.french_terms[row['MOTS_fr']] = term_entry
+        if mots_ar: # Ensure key is not empty
+            self.arabic_terms[mots_ar] = term_entry
+        if mots_fr: # Ensure key is not empty
+            self.french_terms[mots_fr] = term_entry
         
         # Group by category
-        category = row['chairdappartenance']
+        category = term_entry['category']
         if category not in self.categories:
             self.categories[category] = []
         self.categories[category].append(term_entry)
         
         # Store in main terminology dict
-        self.terminology[row['Num']] = term_entry
+        if num: # Ensure key is not empty
+            self.terminology[num] = term_entry
 
     def check_content(self, content: str, language: str = 'arabic') -> Tuple[str, List[Dict]]:
         """Check content against terminology database and return suggestions"""
